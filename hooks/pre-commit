@@ -1,0 +1,27 @@
+#!/bin/sh
+
+STAGED_PHP=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.php$')
+
+if [ -z "$STAGED_PHP" ]; then
+    exit 0
+fi
+
+# Format staged PHP files with Pint and restage
+echo "Formatting staged PHP files with Pint..."
+echo "$STAGED_PHP" | xargs vendor/bin/pint --quiet
+
+if [ $? -ne 0 ]; then
+    echo "Pint formatting failed. Commit aborted."
+    exit 1
+fi
+
+echo "$STAGED_PHP" | xargs git add
+
+# Run static analysis
+echo "Running PHPStan..."
+vendor/bin/phpstan analyse --no-progress --quiet
+
+if [ $? -ne 0 ]; then
+    echo "PHPStan reported errors. Commit aborted."
+    exit 1
+fi

@@ -1,0 +1,55 @@
+{
+    "name": "joelstein/laravel-t",
+    "description": "Gettext PO-based translations for Laravel with ICU MessageFormat support",
+    "keywords": ["laravel", "translations", "gettext", "po", "i18n", "icu"],
+    "homepage": "https://github.com/joelstein/laravel-t",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "gettext/gettext": "^5.7",
+        "illuminate/contracts": "^11.0 || ^12.0",
+        "spatie/laravel-package-tools": "^1.16"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.0",
+        "orchestra/testbench": "^9.0 || ^10.0",
+        "pestphp/pest": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "JoelStein\\LaravelT\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "JoelStein\\LaravelT\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-install-cmd": "@setup-hooks",
+        "post-update-cmd": "@setup-hooks",
+        "setup-hooks": "ln -sf ../../hooks/pre-commit .git/hooks/pre-commit",
+        "test": "vendor/bin/pest",
+        "format": "vendor/bin/pint",
+        "analyse": "vendor/bin/phpstan analyse"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "JoelStein\\LaravelT\\LaravelTServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

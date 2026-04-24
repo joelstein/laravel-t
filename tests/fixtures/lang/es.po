@@ -1,0 +1,23 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=utf-8\n"
+"Language: es\n"
+
+msgid "Hello"
+msgstr "Hola"
+
+msgid "Hello, :name!"
+msgstr "Hola, :name!"
+
+msgctxt "month"
+msgid "May"
+msgstr "Mayo"
+
+msgid "{count, plural, one {# item} other {# items}}"
+msgstr "{count, plural, one {# elemento} other {# elementos}}"
+
+msgid "Click <a>here</a> to continue."
+msgstr "Haz clic <a>aqui</a> para continuar."
+
+msgid "Untranslated string"
+msgstr ""
