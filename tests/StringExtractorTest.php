@@ -89,6 +89,47 @@ it('extracts t() with named context but no array parameter', function () {
     expect($translation->getContext())->toBe('options');
 });
 
+it('extracts t() calls with named locale argument', function () {
+    $translations = extractStrings("<?php t('Hello', locale: \$locale);");
+
+    expect($translations->find(null, 'Hello'))->not->toBeNull();
+});
+
+it('does not treat a literal named locale as context', function () {
+    $translations = extractStrings("<?php t('Hello', locale: 'fr');");
+
+    expect($translations->find(null, 'Hello'))->not->toBeNull();
+    expect($translations->find('fr', 'Hello'))->toBeNull();
+});
+
+it('extracts t() calls with array parameters and named locale', function () {
+    $translations = extractStrings("<?php t('Hello {name}', ['name' => \$name], locale: \$locale);");
+
+    expect($translations->find(null, 'Hello {name}'))->not->toBeNull();
+});
+
+it('extracts t() calls with named context and named locale', function () {
+    $translations = extractStrings("<?php t('Save', context: 'button', locale: \$locale);");
+
+    $translation = $translations->find('button', 'Save');
+    expect($translation)->not->toBeNull();
+    expect($translation->getContext())->toBe('button');
+});
+
+it('extracts t() calls with positional context and locale', function () {
+    $translations = extractStrings("<?php t('Save', [], 'button', \$locale);");
+
+    $translation = $translations->find('button', 'Save');
+    expect($translation)->not->toBeNull();
+    expect($translation->getContext())->toBe('button');
+});
+
+it('extracts t() calls with a locale expression containing calls', function () {
+    $translations = extractStrings("<?php t('Welcome', locale: app()->getLocale());");
+
+    expect($translations->find(null, 'Welcome'))->not->toBeNull();
+});
+
 it('records file and line references for each match', function () {
     $contents = "<?php\nt('First');\n\nt('Second');\n";
     $translations = Translations::create('messages');

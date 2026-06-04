@@ -11,12 +11,14 @@ class StringExtractor
 {
     /**
      * Matches t('string') and @t('string') with optional array params and
-     * optional context (positional or named argument syntax).
+     * optional context (positional or named argument syntax). Any further
+     * arguments (e.g. a positional or named locale) are tolerated and
+     * ignored, so calls like t('...', locale: $locale) still extract.
      *
      * The (?<![a-zA-Z]) guard prevents matching identifiers that end in t,
      * e.g. format('...') or sprint('...').
      */
-    private const PATTERN = '/(?<![a-zA-Z])@?t\(\s*(?:\'((?:[^\'\\\\]|\\\\.)*)\'|"((?:[^"\\\\]|\\\\.)*)")(?:\s*,\s*\[[^\]]*\])?(?:\s*,\s*(?:context:\s*)?(?:\'((?:[^\'\\\\]|\\\\.)*)\'|"((?:[^"\\\\]|\\\\.)*)"))?\s*\)/';
+    private const PATTERN = '/(?<![a-zA-Z])@?t\(\s*(?:\'((?:[^\'\\\\]|\\\\.)*)\'|"((?:[^"\\\\]|\\\\.)*)")(?:\s*,\s*\[[^\]]*\])?(?:\s*,\s*(?:context:\s*)?(?:\'((?:[^\'\\\\]|\\\\.)*)\'|"((?:[^"\\\\]|\\\\.)*)"))?(?:\s*,\s*(?:[^()]|\([^()]*\))*)?\s*\)/';
 
     /**
      * Find t()/@t() calls in $contents and add them to $translations,
