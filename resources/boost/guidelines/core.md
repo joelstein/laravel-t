@@ -9,6 +9,7 @@ Laravel T provides gettext PO-based translations using source strings as keys, w
 - Use ICU MessageFormat for plurals: `t('{count, plural, one {# item} other {# items}}', ['count' => $total])`
 - Use the `context` parameter to disambiguate identical strings: `t('May', context: 'month')`
 - Use closure parameters for inline markup: `t('Click <a>here</a>.', ['a' => fn ($text) => "<a href=\"/next\">{$text}</a>"])`
+- Do NOT use Livewire's `#[Title('...')]` attribute — it cannot be translated. Set the title at render time instead: `$view->title(t('Dashboard'))` in a `rendering($view)` hook.
 - Translation files are stored as PO files in the directory configured in `config/t.php`.
 - Run `php artisan t:extract` to scan source files and update PO files.
 - Run `php artisan t:untranslated` to list untranslated strings by locale.
