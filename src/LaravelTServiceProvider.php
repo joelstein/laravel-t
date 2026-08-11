@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace JoelStein\LaravelT;
 
 use Illuminate\Support\Facades\Blade;
+use JoelStein\LaravelT\Commands\CacheCommand;
 use JoelStein\LaravelT\Commands\ClearCommand;
 use JoelStein\LaravelT\Commands\ExtractCommand;
 use JoelStein\LaravelT\Commands\LintCommand;
@@ -20,6 +21,7 @@ class LaravelTServiceProvider extends PackageServiceProvider
             ->name('t')
             ->hasConfigFile()
             ->hasCommands([
+                CacheCommand::class,
                 ClearCommand::class,
                 ExtractCommand::class,
                 LintCommand::class,

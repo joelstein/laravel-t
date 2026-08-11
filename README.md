@@ -1,6 +1,6 @@
 # Laravel T
 
-Gettext PO-based translations for Laravel with ICU MessageFormat support. Use source strings as keys — no more `auth.failed` style lookup tables — and manage translations with standard PO files that every translation tool already understands.
+Gettext PO-based translations for Laravel with ICU MessageFormat support. Use source strings as keys instead of `auth.failed` style lookup tables, and manage translations with standard PO files that every translation tool already understands.
 
 ## What It Does
 
@@ -11,11 +11,11 @@ t('Hello, :name!', ['name' => $user->name])
 ```
 
 - **PO files as the source of truth.** One `.po` file per locale, loaded via [gettext/gettext](https://github.com/php-gettext/Gettext). Works with Poedit, Crowdin, Weblate, and every other gettext-aware tool.
-- **Readable fallbacks.** When a translation is missing, the source string renders as-is — no `translation.missing.key` artifacts.
+- **Readable fallbacks.** When a translation is missing, the source string renders as-is, with no `translation.missing.key` artifacts.
 - **ICU MessageFormat.** Full plural, select, and number formatting via PHP's `MessageFormatter`: `t('{count, plural, one {# item} other {# items}}', ['count' => $total])`.
 - **Contextual translations.** Disambiguate identical strings with `msgctxt`: `t('May', context: 'month')`.
 - **Closure-based inline markup.** Wrap translated text in dynamic tags without splitting the sentence: `t('Click <a>here</a>.', ['a' => fn ($s) => "<a href=\"/next\">{$s}</a>"])`.
-- **Cached in production.** Parsed PO files are cached through Laravel's cache system.
+- **Compiled for production.** `t:cache` compiles each PO file to a plain PHP array that OPcache holds in shared memory. No cache driver round trip, no deserialization, no per-request allocation.
 
 ## Requirements
 
@@ -76,7 +76,10 @@ php artisan t:untranslated es
 php artisan t:lint
 php artisan t:lint es
 
-# Clear the translation cache
+# Compile PO files to PHP arrays for production (run on deploy)
+php artisan t:cache
+
+# Clear the translation cache, including compiled files
 php artisan t:clear
 ```
 
@@ -91,6 +94,29 @@ When a translation is missing, the lookup walks a fallback chain:
 3. The configured `fallback_locale`, if set
 
 If nothing in the chain has the string, the original msgid is returned. ICU formatting always uses the originally requested locale, so plural rules and number formats still match the user's region even when the translation comes from a fallback.
+
+## Caching
+
+Lookups resolve in three tiers:
+
+1. **Compiled PHP file.** Written by `t:cache` to `bootstrap/cache/t-{locale}.php`. OPcache holds it in shared memory, so lookups cost nothing.
+2. **Laravel's cache.** Used when there is no compiled file and caching is on (`cache => null` means production only). Reparses when the PO file's mtime changes.
+3. **Parsing the PO file.** The fallback, and the normal path in local development.
+
+Add `t:cache` to your deploy script:
+
+```bash
+php artisan t:cache
+```
+
+Locally, a compiled file is discarded as soon as its PO file changes, so `t:cache` is safe to run. In production it is trusted without checking, exactly like `config:cache`: editing a PO file on a live server does nothing until you re-run `t:cache` or `t:clear`.
+
+### Deployment notes
+
+- OPcache must be enabled, or the compiled file is reparsed on every request. Laravel Forge enables it by default.
+- Run `t:cache` early in the script. OPcache ignores files modified within the last `opcache.file_update_protection` seconds (2 by default).
+- On in-place deploys running `opcache.validate_timestamps=0`, reload PHP-FPM afterward. Forge's default deploy script already does.
+- On symlink deploys nothing extra is needed, since each release is a new path. Do not add `bootstrap/cache` to your shared paths.
 
 ## Configuration
 

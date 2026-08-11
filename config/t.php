@@ -78,6 +78,10 @@ return [
     | This is recommended for production. Set to null to use the
     | APP_ENV check (caches only in production).
     |
+    | Note that the t:cache command compiles PO files to plain PHP arrays in
+    | bootstrap/cache, which OPcache serves from shared memory. A compiled
+    | file takes precedence over this setting entirely.
+    |
     */
 
     'cache' => null,
