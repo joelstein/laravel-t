@@ -51,34 +51,66 @@ class Translator
             $translated = $message;
         }
 
+        $values = array_filter($params, fn (mixed $value): bool => ! $value instanceof \Closure);
+        $closures = array_filter($params, fn (mixed $value): bool => $value instanceof \Closure);
+
+        // Swap :param placeholders for inert tokens up front, so values are
+        // inserted once at the very end and never reinterpreted by ICU, the
+        // closure tags, or another placeholder.
+        [$translated, $tokens] = $this->tokenize($translated, $values);
+
         // Handle ICU message formatting (plurals, select, etc.)
-        if ($params !== [] && $this->isIcuMessage($translated)) {
-            $formatted = MessageFormatter::formatMessage($locale, $translated, $params);
+        if ($values !== [] && $this->isIcuMessage($translated)) {
+            $formatted = MessageFormatter::formatMessage($locale, $translated, $values);
             if ($formatted !== false) {
-                return $formatted;
+                $translated = $formatted;
             }
         }
 
         // Handle closure-based component parameters like <a>text</a>
-        foreach ($params as $key => $value) {
-            if ($value instanceof \Closure) {
-                $pattern = '/<'.preg_quote($key, '/').'>(.*?)<\/'.preg_quote($key, '/').'>/s';
-                $translated = preg_replace_callback(
-                    $pattern,
-                    fn (array $matches): string => $this->toString($value($matches[1])),
-                    $translated
-                ) ?? $translated;
-            }
+        foreach ($closures as $key => $value) {
+            $pattern = '/<'.preg_quote($key, '/').'>(.*?)<\/'.preg_quote($key, '/').'>/s';
+            $translated = preg_replace_callback(
+                $pattern,
+                fn (array $matches): string => $this->toString($value(strtr($matches[1], $tokens))),
+                $translated
+            ) ?? $translated;
         }
 
-        // Simple parameter replacement for :param style (non-closure values only)
-        foreach ($params as $key => $value) {
-            if (! $value instanceof \Closure) {
-                $translated = str_replace(":{$key}", $this->toString($value), $translated);
-            }
+        return strtr($translated, $tokens);
+    }
+
+    /**
+     * Replace each :param placeholder with a unique token, returning the
+     * tokenized message and a map of tokens to their values. Longer keys
+     * match first, so :name never clobbers :names. A placeholder preceded by
+     * another colon is skipped, leaving ICU skeletons like ::currency intact.
+     *
+     * @param  array<string, mixed>  $values
+     * @return array{string, array<string, string>}
+     */
+    protected function tokenize(string $message, array $values): array
+    {
+        if ($values === []) {
+            return [$message, []];
         }
 
-        return $translated;
+        $keys = array_map('strval', array_keys($values));
+        usort($keys, fn (string $a, string $b): int => strlen($b) <=> strlen($a));
+        $pattern = '/(?<!:):('.implode('|', array_map(fn (string $key): string => preg_quote($key, '/'), $keys)).')/';
+
+        $tokens = [];
+
+        $message = preg_replace_callback($pattern, function (array $matches) use ($values, &$tokens): string {
+            // Private-use characters are literal text to ICU, even inside
+            // plural branches and quoted segments.
+            $token = "\u{E000}".count($tokens)."\u{E001}";
+            $tokens[$token] = $this->toString($values[$matches[1]]);
+
+            return $token;
+        }, $message) ?? $message;
+
+        return [$message, $tokens];
     }
 
     /**

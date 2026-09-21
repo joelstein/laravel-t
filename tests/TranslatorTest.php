@@ -67,6 +67,52 @@ it('formats ICU plural messages', function () {
         ->toBe('5 elementos');
 });
 
+it('replaces :param placeholders in ICU messages', function () {
+    app()->setLocale('en');
+
+    expect(app(Translator::class)->translate('Hello, :name! {count, plural, one {# item} other {# items}}', ['name' => 'Joel', 'count' => 2]))
+        ->toBe('Hello, Joel! 2 items');
+
+    expect(app(Translator::class)->translate('{count, plural, one {:name has # item} other {:name has # items}}', ['name' => 'Joel', 'count' => 1]))
+        ->toBe('Joel has 1 item');
+});
+
+it('inserts :param values without reinterpreting them', function () {
+    app()->setLocale('en');
+
+    $translator = app(Translator::class);
+
+    expect($translator->translate('Hello, :name! {count, plural, one {# item} other {# items}}', ['name' => "O'Brien {x} # :count", 'count' => 2]))
+        ->toBe("Hello, O'Brien {x} # :count! 2 items");
+
+    expect($translator->translate('Hello, :name! Click <a>here</a>.', ['name' => '<a>Joel</a>', 'a' => fn ($text) => "[{$text}]"]))
+        ->toBe('Hello, <a>Joel</a>! Click [here].');
+
+    expect($translator->translate('Click <a>here</a>.', ['a' => fn ($text) => "{$text} :name", 'name' => 'Joel']))
+        ->toBe('Click here :name.');
+});
+
+it('matches the longest :param key first', function () {
+    app()->setLocale('en');
+
+    expect(app(Translator::class)->translate(':name and :names', ['name' => 'Joel', 'names' => 'friends']))
+        ->toBe('Joel and friends');
+});
+
+it('passes :param values into closure tag text', function () {
+    app()->setLocale('en');
+
+    expect(app(Translator::class)->translate('Welcome, <b>:name</b>!', ['name' => 'Joel', 'b' => fn ($text) => "<strong>{$text}</strong>"]))
+        ->toBe('Welcome, <strong>Joel</strong>!');
+});
+
+it('combines closure tags with ICU messages', function () {
+    app()->setLocale('en');
+
+    expect(app(Translator::class)->translate('<a>{count, plural, one {# item} other {# items}}</a>', ['count' => 3, 'a' => fn ($text) => "[{$text}]"]))
+        ->toBe('[3 items]');
+});
+
 it('handles closure-based tag parameters', function () {
     app()->setLocale('es');
 
