@@ -85,6 +85,8 @@ php artisan t:clear
 
 `t:extract` preserves existing translations, adds new entries, and marks strings that no longer exist in source as obsolete (`#~` entries in the PO file). Obsolete translations keep the translator's work so they snap back if the source string reappears. Run `t:extract --purge` to hard-delete obsolete entries instead. The source locale (default `en`) gets `msgstr = msgid` auto-populated.
 
+`t:extract` also exits with a failure when a Blade view calls `t()` inside a colon-bound attribute on a plain HTML element, such as `<div :aria-label="t('Close')">`. Blade only evaluates colon attributes on components, so on a plain element Alpine runs `t()` as JavaScript and the browser throws `t is not defined`. Use `aria-label="{{ t('Close') }}"` instead. The PO files are still updated, and each offending file, line, tag, and attribute is listed, so a pre-commit hook or CI step running `t:extract` catches it.
+
 ## Fallback Chain
 
 When a translation is missing, the lookup walks a fallback chain:

@@ -21,4 +21,5 @@ Laravel T provides gettext PO-based translations using source strings as keys, w
 - Pass the plural through a component attribute instead: `<x-badge :label="t('{count, plural, one {# item} other {# items}}', ['count' => $total])" />`. An attribute value is not a `{{ }}` echo, so the braces survive — this is why plurals work in component labels.
 - When the string is standalone prose rather than an attribute, build it in a `#[Computed]` property (or any method) and echo the result: `{{ $this->itemCountLabel }}`.
 - The `@t()` directive is safe either way — its arguments are matched by balanced parentheses, not by `}}`: `@t('{count, plural, one {# item} other {# items}}', ['count' => $total])`.
+- Only use `t()` in a colon-prefixed attribute on a Blade component (`x-*`, `flux:*`, `livewire:*`): `<flux:input :label="t('Name')" />`. On a plain HTML element, write `aria-label="{{ t('Name') }}"` — Blade leaves `:aria-label` alone, so Alpine evaluates `t()` as JavaScript and the browser throws `t is not defined`. `t:extract` fails when it finds one.
 @endscoped

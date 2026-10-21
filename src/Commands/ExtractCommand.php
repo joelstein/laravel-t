@@ -8,6 +8,7 @@ use Gettext\Translation;
 use Gettext\Translations;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Config;
+use JoelStein\LaravelT\AlpineBindingDetector;
 use JoelStein\LaravelT\PoFile;
 use JoelStein\LaravelT\StringExtractor;
 use RecursiveDirectoryIterator;
@@ -21,9 +22,18 @@ class ExtractCommand extends Command
 
     protected $description = 'Extract translatable strings from source files to PO files';
 
-    public function handle(StringExtractor $extractor): int
+    /**
+     * t() calls found in Alpine bindings on plain HTML elements.
+     *
+     * @var list<array{file: string, line: int, tag: string, attribute: string}>
+     */
+    protected array $bindings = [];
+
+    public function handle(StringExtractor $extractor, AlpineBindingDetector $detector): int
     {
         $this->info('Extracting translatable strings...');
+
+        $this->bindings = [];
 
         $outputPath = Config::string('t.path');
 
@@ -31,7 +41,7 @@ class ExtractCommand extends Command
             mkdir($outputPath, 0755, true);
         }
 
-        $extracted = $this->extractStrings($extractor);
+        $extracted = $this->extractStrings($extractor, $detector);
 
         $this->info(sprintf('Found %d translatable strings.', count($extracted)));
 
@@ -43,13 +53,37 @@ class ExtractCommand extends Command
 
         $this->info('Extraction complete!');
 
+        if ($this->bindings !== []) {
+            $this->reportBindings();
+
+            return self::FAILURE;
+        }
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Report t() calls in Alpine bindings, which throw "t is not defined"
+     * in the browser.
+     */
+    protected function reportBindings(): void
+    {
+        $this->newLine();
+        $this->error(sprintf('Found %d t() call(s) in Alpine bindings on plain HTML elements:', count($this->bindings)));
+
+        foreach ($this->bindings as $binding) {
+            $this->line(sprintf('  - %s:%d <%s %s>', $binding['file'], $binding['line'], $binding['tag'], $binding['attribute']));
+        }
+
+        $this->newLine();
+        $this->line('A colon attribute on a plain HTML element is evaluated as JavaScript by Alpine, where t() is not defined.');
+        $this->line('Use attr="{{ t(\'...\') }}" instead. :attr="t(\'...\')" only works on Blade components.');
     }
 
     /**
      * Extract all translatable strings from source files.
      */
-    protected function extractStrings(StringExtractor $extractor): Translations
+    protected function extractStrings(StringExtractor $extractor, AlpineBindingDetector $detector): Translations
     {
         $translations = Translations::create('messages');
         $translations->getHeaders()->set('Content-Type', 'text/plain; charset=utf-8');
@@ -61,7 +95,7 @@ class ExtractCommand extends Command
                 continue;
             }
 
-            $this->scanDirectory($fullPath, $translations, $extractor);
+            $this->scanDirectory($fullPath, $translations, $extractor, $detector);
         }
 
         return $translations;
@@ -70,7 +104,7 @@ class ExtractCommand extends Command
     /**
      * Recursively scan a directory for PHP files.
      */
-    protected function scanDirectory(string $directory, Translations $translations, StringExtractor $extractor): void
+    protected function scanDirectory(string $directory, Translations $translations, StringExtractor $extractor, AlpineBindingDetector $detector): void
     {
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($directory)
@@ -100,6 +134,12 @@ class ExtractCommand extends Command
                 ? substr($path, strlen(base_path()) + 1)
                 : $path;
             $extractor->extract($contents, $relativePath, $translations);
+
+            if (str_ends_with($path, '.blade.php')) {
+                foreach ($detector->detect($contents) as $binding) {
+                    $this->bindings[] = ['file' => $relativePath, ...$binding];
+                }
+            }
         }
     }
 

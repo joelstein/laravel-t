@@ -210,3 +210,40 @@ it('ignores non-PHP files and vendor directories', function () {
     expect($en)->not->toHaveKey('Ignored-txt');
     expect($en)->not->toHaveKey('Ignored-vendor');
 });
+
+it('fails when t() is used in an Alpine binding on a plain element', function () {
+    file_put_contents($this->scanDir.'/example.blade.php', <<<'BLADE'
+        <div
+            class="handle"
+            :aria-label="t('Hello')"
+        ></div>
+        BLADE);
+
+    $this->artisan('t:extract')
+        ->expectsOutputToContain('Found 1 t() call(s) in Alpine bindings on plain HTML elements')
+        ->expectsOutputToContain($this->scanDir.'/example.blade.php:3 <div :aria-label>')
+        ->assertFailed();
+
+    // Strings are still extracted so the PO files stay current.
+    expect(loadPo($this->outputDir.'/en.po'))->toHaveKey('Hello');
+});
+
+it('succeeds when t() is bound on components or echoed on plain elements', function () {
+    file_put_contents($this->scanDir.'/example.blade.php', <<<'BLADE'
+        <flux:input :label="t('Name')" />
+        <x-foo :title="t('Hello')" />
+        <div aria-label="{{ t('Welcome') }}"></div>
+        BLADE);
+
+    $this->artisan('t:extract')
+        ->doesntExpectOutputToContain('Alpine bindings')
+        ->assertSuccessful();
+});
+
+it('only checks Alpine bindings in Blade files', function () {
+    file_put_contents($this->scanDir.'/Example.php', <<<'PHP'
+        <?php echo '<div :title="t(\'Hello\')"></div>';
+        PHP);
+
+    $this->artisan('t:extract')->assertSuccessful();
+});
